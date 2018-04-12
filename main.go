@@ -3,24 +3,32 @@ package main
 import (
 	"github.com/sirkuttin/mqtt"
 	"github.com/sirkuttin/edge_vehicle_data"
-	"fmt"
 	"encoding/binary"
 	"bytes"
 	"os"
 	"os/signal"
+	log "github.com/Sirupsen/logrus"
 )
+
+func init() {
+	log.SetLevel(log.DebugLevel)
+}
 
 
 func main() {
 
-	mqttClient, err := mqtt.New("tcp://127.0.0.1:1883", "edge")
+	mqttClient, err := mqtt.New("tcp://127.0.0.1:1884", "edge")
 	defer mqttClient.Disconnect(2000)
 	if err != nil {
+		log.Fatal(err)
 		panic(err)
 	}
 
+	log.Info("mqtt client connected")
+
 	go func() {
 		handle := handleVehiclAlertMessage(mqttClient)
+		log.Info("Starting Vehicle Alert routine")
 		for ; ; {
 			handle()
 		}
@@ -28,6 +36,7 @@ func main() {
 
 	go func() {
 		handle := handleWeatherMessage(mqttClient)
+		log.Info("Starting Weather Update routine")
 		for ; ; {
 			handle()
 		}
@@ -36,7 +45,7 @@ func main() {
 	close := make(chan os.Signal, 1)
 	signal.Notify(close, os.Interrupt)
 	<-close
-	fmt.Println("Program Exited")
+	log.Info("Program Exited")
 }
 
 func handleVehiclAlertMessage(mqttClient mqtt.Mqtt) (func()){
@@ -52,7 +61,7 @@ func handleVehiclAlertMessage(mqttClient mqtt.Mqtt) (func()){
 
 	return func(){
 		vehicleAlert := parseVehicleData((<- vehicleAlertChan).Payload)
-		fmt.Println("alert_id =", vehicleAlert.AlertId, "| vehicle_id =", vehicleAlert.VehicleId)
+		log.Debug("alert_id =", vehicleAlert.AlertId, "| vehicle_id =", vehicleAlert.VehicleId)
 	}
 }
 
@@ -61,7 +70,7 @@ func parseVehicleData(alertBytes []byte) (newAlert data.Alert) {
 	buf := bytes.NewReader(alertBytes)
 
 	if err := binary.Read(buf, binary.LittleEndian, &newAlert); err != nil {
-		fmt.Println("binary.Read failed:", err)
+		log.Error("binary.Read failed:", err)
 	}
 	return
 }
@@ -79,7 +88,7 @@ func handleWeatherMessage(mqttClient mqtt.Mqtt) (func()){
 
 	return func(){
 		weatherData := parseWeatherData((<-weatherChan).Payload)
-		fmt.Println(weatherData)
+		log.Debug(weatherData)
 	}
 }
 func parseWeatherData(weatherBytes []byte) (newWeather data.Weather) {
@@ -87,7 +96,7 @@ func parseWeatherData(weatherBytes []byte) (newWeather data.Weather) {
 	buf := bytes.NewReader(weatherBytes)
 
 	if err := binary.Read(buf, binary.LittleEndian, &newWeather); err != nil {
-		fmt.Println("binary.Read failed:", err)
+		log.Error("binary.Read failed:", err)
 	}
 	return
 }
