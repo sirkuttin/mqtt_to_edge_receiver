@@ -48,7 +48,7 @@ func main() {
 	log.Info("Program Exited")
 }
 
-func handleVehiclAlertMessage(mqttClient mqtt.Mqtt) (func()){
+func handleVehiclAlertMessage(mqttClient mqtt.Client) (func()){
 	vehicleAlertChan := make(chan mqtt.Message)
 
 	err := mqttClient.SubscribeToTopic("vehicle-alert", func(msg mqtt.Message) {
@@ -75,7 +75,7 @@ func parseVehicleData(alertBytes []byte) (newAlert data.Alert) {
 	return
 }
 
-func handleWeatherMessage(mqttClient mqtt.Mqtt) (func()){
+func handleWeatherMessage(mqttClient mqtt.Client) (func()){
 	weatherChan := make(chan mqtt.Message)
 
 	err := mqttClient.SubscribeToTopic("weather", func(msg mqtt.Message) {
